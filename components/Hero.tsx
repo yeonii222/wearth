@@ -32,11 +32,9 @@ export default function Hero() {
 
         {/* 설명 */}
         <p className="max-w-lg text-lg leading-relaxed text-gray-600">
-          날씨를 알면 스타일이 보입니다.
+          날씨를 알면 스타일이 보인다!
           <br />
-          매일 아침, 당신의 날씨와 취향에 맞는
-          <br />
-          완벽한 코디를 제안해드려요.
+          오늘의 날씨와 내 옷장에 딱 맞는 코디를 바로 알려드릴게요.
         </p>
 
         {/* 이메일 폼 */}

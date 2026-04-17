@@ -2,23 +2,23 @@ const steps = [
   {
     number: '01',
     icon: '🌤️',
-    title: '오늘의 날씨를 파악해요',
+    title: '오늘 날씨, 제가 먼저 확인할게요.',
     description:
-      '위치 기반으로 기온, 강수 확률, 체감 온도까지 실시간으로 분석합니다. 날씨를 제대로 아는 것이 시작이에요.',
+      '기온이 몇 도인지, 비가 올지, 체감은 어떤지. 앱을 여는 순간 바로 보여요. 날씨를 아는 것이 스타일의 시작.',
   },
   {
     number: '02',
     icon: '✨',
-    title: 'AI가 코디를 제안해드려요',
+    title: '당신의 옷장에서 찾아드려요.',
     description:
-      '날씨 데이터와 당신의 취향을 결합해 오늘 가장 어울리는 코디를 골라드립니다. 내 옷장 기반으로요.',
+      '새 옷 사지마세요. 이미 가진 옷으로 오늘 날씨와 상황에 가장 잘 맞는 코디를 골라드려요.',
   },
   {
     number: '03',
     icon: '🚀',
-    title: '자신감 있게 하루를 시작해요',
+    title: '3초면 충분해요.',
     description:
-      '더 이상 고민하지 않아도 됩니다. 완성된 코디로 하루를 시작하면, 아침부터 기분이 달라질 거예요.',
+      '날씨 확인하고, 옷장 열고, 고민하던 시간. 이제 WEARTH에게 맡기세요. 3초 안에 오늘 뭐 입을지 알려드릴게요.',
   },
 ]
 
@@ -29,12 +29,10 @@ export default function HowItWorks() {
         {/* 헤더 */}
         <div className="mb-16 text-center">
           <p className="mb-3 text-sm font-semibold uppercase tracking-widest text-[#4F7B5F]">
-            작동 방식
+            HOW IT WORKS
           </p>
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            3단계로 완성되는
-            <br />
-            나만의 스타일
+            오늘 날씨에 딱 맞는 코디를 3초 안에
           </h2>
         </div>
 

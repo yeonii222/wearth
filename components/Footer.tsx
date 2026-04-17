@@ -25,11 +25,11 @@ export default function Footer() {
               </ul>
             </div>
             <div className="flex flex-col gap-3">
-              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">회사</p>
+              <p className="text-xs font-semibold uppercase tracking-widest text-gray-400">법적고지</p>
               <ul className="flex flex-col gap-2 text-sm text-gray-500">
-                <li><a href="#" className="hover:text-[#4F7B5F] transition-colors">팀 소개</a></li>
-                <li><a href="#" className="hover:text-[#4F7B5F] transition-colors">블로그</a></li>
-                <li><a href="#" className="hover:text-[#4F7B5F] transition-colors">채용</a></li>
+                <li><a href="#" className="hover:text-[#4F7B5F] transition-colors">개인정보처리방침</a></li>
+                <li><a href="#" className="hover:text-[#4F7B5F] transition-colors">이용약관</a></li>
+                <li><a href="#" className="hover:text-[#4F7B5F] transition-colors">문의</a></li>
               </ul>
             </div>
           </div>

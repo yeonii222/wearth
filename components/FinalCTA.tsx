@@ -6,20 +6,20 @@ export default function FinalCTA() {
       <div className="mx-auto flex max-w-2xl flex-col items-center gap-8 text-center">
         {/* 장식 */}
         <span className="inline-flex items-center justify-center rounded-full bg-[#4F7B5F]/10 p-5 text-5xl">
-          🌿
+          ☀️
         </span>
 
         {/* 헤드라인 */}
         <div>
           <h2 className="text-3xl font-bold text-gray-900 sm:text-4xl">
-            오늘 날씨에 맞는 코디,
+            오늘 뭐 입지?
             <br />
-            내일부터 시작해보세요
+            <span className="text-[#4F7B5F]">WEARTH</span>가 골라드릴게요.
           </h2>
           <p className="mt-4 text-lg leading-relaxed text-gray-500">
-            얼리액세스에 참여하고, 가장 먼저 WEARTH를 경험해보세요.
+            얼리액세스에 참여하고, 가장 먼저 <span className="text-[#4F7B5F]">WEARTH</span>를 경험해보세요.
             <br />
-            한정된 인원에게만 제공되는 무료 베타 서비스입니다.
+            지금 신청하면 베타 오픈 때 가장 먼저 알려드려요.
           </p>
         </div>
 

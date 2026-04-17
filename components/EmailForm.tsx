@@ -30,7 +30,21 @@ export default function EmailForm({
   if (submitted) {
     return (
       <div className="flex items-center gap-3 rounded-2xl bg-white/20 px-6 py-4 text-center">
-        <span className="text-2xl">🌿</span>
+        <svg
+          xmlns="http://www.w3.org/2000/svg"
+          width="24"
+          height="24"
+          viewBox="0 0 24 24"
+          fill="none"
+          stroke="#4F7B5F"
+          strokeWidth="2.5"
+          strokeLinecap="round"
+          strokeLinejoin="round"
+          aria-hidden="true"
+        >
+          <circle cx="12" cy="12" r="10" />
+          <path d="m9 12 2 2 4-4" />
+        </svg>
         <p className={variant === 'dark' ? 'text-white font-medium' : 'text-[#4F7B5F] font-medium'}>
           신청이 완료됐어요! 곧 연락드릴게요.
         </p>
