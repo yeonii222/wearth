@@ -15,16 +15,37 @@ export default function EmailForm({
 }: EmailFormProps) {
   const [email, setEmail] = useState('')
   const [submitted, setSubmitted] = useState(false)
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
 
-  function handleSubmit(e: React.FormEvent) {
+  async function handleSubmit(e: React.FormEvent) {
     e.preventDefault()
     if (!email || !email.includes('@')) {
       setError('올바른 이메일 주소를 입력해주세요.')
       return
     }
     setError('')
-    setSubmitted(true)
+    setLoading(true)
+
+    try {
+      const res = await fetch('/api/waitlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email }),
+      })
+      const data = await res.json()
+
+      if (!res.ok) {
+        setError(data.error ?? '오류가 발생했어요. 다시 시도해주세요.')
+        return
+      }
+
+      setSubmitted(true)
+    } catch {
+      setError('네트워크 오류가 발생했어요. 다시 시도해주세요.')
+    } finally {
+      setLoading(false)
+    }
   }
 
   if (submitted) {
@@ -70,13 +91,14 @@ export default function EmailForm({
       </div>
       <button
         type="submit"
-        className={`h-12 cursor-pointer rounded-full px-6 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] ${
+        disabled={loading}
+        className={`h-12 cursor-pointer rounded-full px-6 text-sm font-semibold transition-all hover:scale-[1.02] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed disabled:scale-100 ${
           variant === 'dark'
             ? 'bg-white text-[#4F7B5F] hover:bg-white/90'
             : 'bg-[#4F7B5F] text-white hover:bg-[#3a5c47]'
         }`}
       >
-        {buttonText}
+        {loading ? '신청 중...' : buttonText}
       </button>
     </form>
   )

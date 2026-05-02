@@ -4,7 +4,7 @@ const problems: { emoji: string; title: ReactNode; key: string; description: str
   {
     emoji: '🌧️',
     key: 'weather',
-    title: <>오늘도 얇게 입고 나왔다. (아잇 추워)</>,
+    title: <>오늘 기온 16도,<br/>그래서 뭘 입어야 해?</>,
     description: '날씨를 알아도 옷 선택은 늘 어렵죠. 오늘 기온에 딱 맞는 옷, 사실 이미 옷장에 있어요.',
   },
   {
@@ -31,7 +31,7 @@ export default function ProblemSection() {
             IDEAL FOR
           </p>
           <h2 className="text-3xl font-bold leading-snug text-gray-900 sm:text-4xl">
-            하루 15분, 매일 옷장 앞에서 사라지고 있어요.
+            오늘도 15분째 옷장 앞에 서 계신가요?
           </h2>
         </div>
 
