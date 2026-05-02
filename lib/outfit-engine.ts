@@ -56,7 +56,7 @@ export function getWeatherWarning(weather: WeatherCondition): string | undefined
 }
 
 // 기온 구간별 아이템 매핑
-const outfitMap: Record<TempCode, Record<Style, Record<Gender | 'common', Partial<OutfitRecommendation>>>> = {
+const outfitMap: Record<TempCode, Record<Style, Partial<Record<'common' | 'female' | 'male' | 'none', Partial<OutfitRecommendation>>>>> = {
   T1: {
     casual: {
       common: { top: ['반팔 티셔츠', '나시', '민소매'], bottom: ['반바지', '숏팬츠'], outer: [], footwear: ['스니커즈', '샌들'], accessories: ['선글라스', '챙 넓은 모자'] },
