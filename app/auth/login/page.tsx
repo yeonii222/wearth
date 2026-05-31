@@ -22,7 +22,6 @@ export default function LoginPage() {
     setError('')
     setMessage('')
 
-    // 비밀번호 재설정 이메일 발송
     if (mode === 'reset') {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
@@ -33,102 +32,107 @@ export default function LoginPage() {
       return
     }
 
-    // 회원가입
     if (mode === 'signup') {
       const { error: signUpError } = await supabase.auth.signUp({ email, password })
-      if (signUpError) {
-        setError(signUpError.message)
-        setLoading(false)
-        return
-      }
+      if (signUpError) { setError(signUpError.message); setLoading(false); return }
       const { error: signInError } = await supabase.auth.signInWithPassword({ email, password })
-      if (signInError) {
-        setError('가입이 완료되었습니다. 로그인해주세요.')
-        setLoading(false)
-        return
-      }
+      if (signInError) { setError('가입이 완료되었습니다. 로그인해주세요.'); setLoading(false); return }
       router.push('/onboarding')
       return
     }
 
-    // 로그인
     const { error } = await supabase.auth.signInWithPassword({ email, password })
-    if (error) {
-      setError('이메일 또는 비밀번호를 확인해주세요.')
-      setLoading(false)
-      return
-    }
+    if (error) { setError('이메일 또는 비밀번호를 확인해주세요.'); setLoading(false); return }
     router.push('/home')
     setLoading(false)
   }
 
-  const title = mode === 'login' ? '로그인' : mode === 'signup' ? '회원가입' : '비밀번호 찾기'
-  const buttonLabel = mode === 'login' ? '로그인' : mode === 'signup' ? '회원가입' : '재설정 링크 받기'
+  const titles: Record<Mode, string> = {
+    login: '로그인',
+    signup: '회원가입',
+    reset: '비밀번호 찾기',
+  }
+
+  const buttonLabels: Record<Mode, string> = {
+    login: '로그인',
+    signup: '회원가입',
+    reset: '재설정 링크 받기',
+  }
 
   return (
-    <div className="min-h-screen bg-[#F5F0E8] flex items-center justify-center px-4">
-      <div className="w-full max-w-md">
-        <div className="text-center mb-8">
-          <h1 className="text-4xl font-bold text-[#2C5F2E]">WEARTH</h1>
-          <p className="text-gray-600 mt-2">오늘 날씨, 오늘 코디</p>
+    <div className="min-h-screen bg-[#F7F5F2] flex items-center justify-center px-4">
+      <div className="w-full max-w-sm">
+
+        {/* 로고 */}
+        <div className="text-center mb-10">
+          <h1 className="text-4xl font-bold text-[#2C5F2E] tracking-tight">WEARTH</h1>
+          <p className="text-sm text-gray-400 mt-2">오늘 날씨, 오늘 코디</p>
         </div>
 
-        <div className="bg-white rounded-2xl p-8 shadow-sm">
-          <h2 className="text-xl font-semibold mb-6 text-gray-800">{title}</h2>
+        {/* 폼 카드 */}
+        <div className="bg-white rounded-2xl p-7 shadow-sm">
+          <h2 className="text-lg font-semibold text-gray-900 mb-5">{titles[mode]}</h2>
 
-          <form onSubmit={handleSubmit} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-3">
             <div>
-              <label className="block text-sm text-gray-600 mb-1">이메일</label>
+              <label className="block text-xs text-gray-500 mb-1.5 font-medium">이메일</label>
               <input
                 type="email"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2C5F2E]"
+                className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2C5F2E] focus:bg-white transition-colors"
                 placeholder="이메일 입력"
                 required
               />
             </div>
 
-            {/* 비밀번호 찾기 모드에서는 비밀번호 입력 숨김 */}
             {mode !== 'reset' && (
               <div>
-                <label className="block text-sm text-gray-600 mb-1">비밀번호</label>
+                <label className="block text-xs text-gray-500 mb-1.5 font-medium">비밀번호</label>
                 <input
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="w-full border border-gray-200 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2C5F2E]"
+                  className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2C5F2E] focus:bg-white transition-colors"
                   placeholder="비밀번호 입력"
                   required
                 />
               </div>
             )}
 
-            {error && <p className="text-sm text-red-500">{error}</p>}
-            {message && <p className="text-sm text-green-600">{message}</p>}
+            {error && (
+              <div className="bg-red-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-red-500">{error}</p>
+              </div>
+            )}
+            {message && (
+              <div className="bg-green-50 rounded-xl px-4 py-3">
+                <p className="text-xs text-green-600">{message}</p>
+              </div>
+            )}
 
             <button
               type="submit"
               disabled={loading}
-              className="w-full bg-[#2C5F2E] text-white rounded-xl py-3 text-sm font-medium hover:bg-[#234d25] transition-colors disabled:opacity-50"
+              className="w-full bg-[#2C5F2E] text-white rounded-xl py-3.5 text-sm font-semibold hover:bg-[#234d25] transition-colors disabled:opacity-50 mt-1"
             >
-              {loading ? '처리 중...' : buttonLabel}
+              {loading ? '처리 중...' : buttonLabels[mode]}
             </button>
           </form>
 
-          {/* 하단 네비게이션 */}
-          <div className="mt-4 flex flex-col gap-2">
+          {/* 하단 링크 */}
+          <div className="mt-4 flex flex-col gap-2 pt-4 border-t border-gray-50">
             {mode === 'login' && (
               <>
                 <button
                   onClick={() => { setMode('signup'); setError(''); setMessage('') }}
-                  className="w-full text-sm text-gray-500 hover:text-gray-700"
+                  className="w-full text-sm text-gray-500 hover:text-gray-800 transition-colors py-1"
                 >
-                  계정이 없으신가요? 회원가입
+                  계정이 없으신가요? <span className="font-medium text-[#2C5F2E]">회원가입</span>
                 </button>
                 <button
                   onClick={() => { setMode('reset'); setError(''); setMessage('') }}
-                  className="w-full text-sm text-gray-400 hover:text-gray-600"
+                  className="w-full text-xs text-gray-400 hover:text-gray-600 transition-colors py-1"
                 >
                   비밀번호를 잊으셨나요?
                 </button>
@@ -137,13 +141,14 @@ export default function LoginPage() {
             {(mode === 'signup' || mode === 'reset') && (
               <button
                 onClick={() => { setMode('login'); setError(''); setMessage('') }}
-                className="w-full text-sm text-gray-500 hover:text-gray-700"
+                className="w-full text-sm text-gray-500 hover:text-gray-800 transition-colors py-1"
               >
-                로그인으로 돌아가기
+                <span className="font-medium text-[#2C5F2E]">로그인</span>으로 돌아가기
               </button>
             )}
           </div>
         </div>
+
       </div>
     </div>
   )
