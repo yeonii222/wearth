@@ -108,7 +108,7 @@ export default function HomePage() {
 
   const handleLogout = async () => {
     await supabase.auth.signOut()
-    router.push('/auth/login')
+    router.push('welcome')
   }
 
   const recentClothes = clothes.slice(0, 3)

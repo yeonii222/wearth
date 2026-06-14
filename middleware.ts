@@ -31,10 +31,10 @@ export async function middleware(request: NextRequest) {
 
   const { data: { user } } = await supabase.auth.getUser()
 
-  // 로그인 안 된 상태에서 보호된 페이지 접근 시 로그인으로
-  if (!user && !request.nextUrl.pathname.startsWith('/auth')) {
+  // 로그인 안 된 상태에서 보호된 페이지 접근 시 커버 화면으로
+  if (!user && !request.nextUrl.pathname.startsWith('/auth') && !request.nextUrl.pathname.startsWith('/welcome')) {
     const url = request.nextUrl.clone()
-    url.pathname = '/auth/login'
+    url.pathname = '/welcome'
     return NextResponse.redirect(url)
   }
 
@@ -57,5 +57,5 @@ export async function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/home/:path*', '/closet/:path*', '/onboarding'],
+  matcher: ['/home/:path*', '/closet/:path*', '/onboarding', '/profile/:path*', '/welcome'],
 }
