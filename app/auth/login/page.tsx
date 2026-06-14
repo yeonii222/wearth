@@ -6,7 +6,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 
 type Mode = 'login' | 'signup' | 'reset'
 
-function LoginPage() {
+function LoginForm() {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const searchParams = useSearchParams()
