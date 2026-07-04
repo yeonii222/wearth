@@ -2,8 +2,8 @@
 
 import { createClient } from '@/lib/supabase-browser'
 import { useRouter } from 'next/navigation'
-import { useState } from 'react'
-import { Camera, Type, Check } from 'lucide-react'
+import { useState, useRef, useEffect } from 'react'
+import { Camera, Type, Mic, MicOff, Check, Loader2 } from 'lucide-react'
 import BottomNav from '@/components/BottomNav'
 
 const CATEGORIES = ['상의', '하의', '아우터', '신발', '액세서리']
@@ -25,7 +25,7 @@ const COLORS: { label: string; hex: string }[] = [
 
 const MATERIALS = ['면', '울', '니트', '린넨', '폴리에스터', '데님', '가죽', '시폰', '벨벳', '기타']
 
-type InputMode = 'text' | 'photo'
+type InputMode = 'text' | 'photo' | 'voice'
 
 export default function ClosetPage() {
   const [mode, setMode] = useState<InputMode>('text')
@@ -37,8 +37,86 @@ export default function ClosetPage() {
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
+
+  // 음성 관련 상태
+  const [isListening, setIsListening] = useState(false)
+  const [transcript, setTranscript] = useState('')
+  const [voiceSupported, setVoiceSupported] = useState(true)
+  const [parsing, setParsing] = useState(false)
+  const [parseComplete, setParseComplete] = useState(false)
+  const recognitionRef = useRef<any>(null)
+
   const router = useRouter()
   const supabase = createClient()
+
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+      if (!SpeechRecognition) setVoiceSupported(false)
+    }
+  }, [])
+
+  // 음성 인식 완료 후 Claude 파싱 호출
+  const parseWithClaude = async (text: string) => {
+    if (!text.trim()) return
+    setParsing(true)
+    setParseComplete(false)
+    try {
+      const res = await fetch('/api/parse-clothing', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text }),
+      })
+      const data = await res.json()
+      if (data.category) setCategory(data.category)
+      if (data.color) setColor(data.color)
+      if (data.material) setMaterial(data.material)
+      setParseComplete(true)
+    } catch (e) {
+      console.error('파싱 실패:', e)
+    } finally {
+      setParsing(false)
+    }
+  }
+
+  const toggleListening = () => {
+    if (isListening) {
+      recognitionRef.current?.stop()
+      setIsListening(false)
+      return
+    }
+
+    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
+    const recognition = new SpeechRecognition()
+    recognition.lang = 'ko-KR'
+    recognition.continuous = false
+    recognition.interimResults = true
+
+    recognition.onstart = () => setIsListening(true)
+
+    recognition.onresult = (event: any) => {
+      const current = event.resultIndex
+      const result = event.results[current]
+      const text = result[0].transcript
+      setTranscript(text)
+      if (result.isFinal) {
+        setName(text)
+        parseWithClaude(text)
+      }
+    }
+
+    recognition.onend = () => setIsListening(false)
+
+    recognition.onerror = (event: any) => {
+      setIsListening(false)
+      if (event.error === 'not-allowed') {
+        alert('마이크 접근 권한이 필요해요. 브라우저 설정에서 마이크를 허용해주세요.')
+      }
+    }
+
+    recognitionRef.current = recognition
+    recognition.start()
+  }
 
   const handleImageChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
@@ -55,12 +133,15 @@ export default function ClosetPage() {
     setMaterial('')
     setImage(null)
     setPreview(null)
+    setTranscript('')
+    setParseComplete(false)
   }
 
   const handleSubmit = async () => {
     if (!category) return
     if (mode === 'text' && !name) return
     if (mode === 'photo' && !image) return
+    if (mode === 'voice' && !name) return
 
     setLoading(true)
     const { data: { user } } = await supabase.auth.getUser()
@@ -95,7 +176,11 @@ export default function ClosetPage() {
     setTimeout(() => setSuccess(false), 3000)
   }
 
-  const isDisabled = loading || !category || (mode === 'text' && !name) || (mode === 'photo' && !image)
+  const isDisabled = loading || parsing
+    || !category
+    || (mode === 'text' && !name)
+    || (mode === 'photo' && !image)
+    || (mode === 'voice' && !name)
 
   return (
     <div className="min-h-screen bg-[#F7F5F2] pb-24">
@@ -119,24 +204,34 @@ export default function ClosetPage() {
       <div className="px-4 max-w-md mx-auto space-y-3">
 
         {/* 입력 방식 탭 */}
-        <div className="flex gap-2 bg-white rounded-xl p-1 shadow-sm">
+        <div className="flex gap-1.5 bg-white rounded-xl p-1 shadow-sm">
           <button
             onClick={() => setMode('text')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
               mode === 'text' ? 'bg-[#2C5F2E] text-white' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            <Type size={14} />
-            텍스트로 등록
+            <Type size={13} />
+            텍스트
           </button>
           <button
             onClick={() => setMode('photo')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-lg text-sm font-medium transition-colors ${
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
               mode === 'photo' ? 'bg-[#2C5F2E] text-white' : 'text-gray-400 hover:text-gray-600'
             }`}
           >
-            <Camera size={14} />
-            사진으로 등록
+            <Camera size={13} />
+            사진
+          </button>
+          <button
+            onClick={() => setMode('voice')}
+            disabled={!voiceSupported}
+            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
+              mode === 'voice' ? 'bg-[#2C5F2E] text-white' : 'text-gray-400 hover:text-gray-600'
+            } disabled:opacity-40`}
+          >
+            <Mic size={13} />
+            음성
           </button>
         </div>
 
@@ -177,6 +272,81 @@ export default function ClosetPage() {
           </div>
         )}
 
+        {/* 음성 입력 */}
+        {mode === 'voice' && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <label className="block text-sm font-medium text-gray-700 mb-1">음성으로 등록</label>
+            <p className="text-xs text-gray-400 mb-4">
+              마이크 버튼을 누르고 옷을 설명해주세요
+            </p>
+
+            {/* 마이크 버튼 */}
+            <div className="flex flex-col items-center gap-3 py-4">
+              <button
+                onClick={toggleListening}
+                disabled={parsing}
+                className={`w-20 h-20 rounded-full flex items-center justify-center transition-all ${
+                  isListening
+                    ? 'bg-red-500 text-white shadow-lg scale-110 animate-pulse'
+                    : 'bg-[#2C5F2E] text-white hover:bg-[#234d25]'
+                } disabled:opacity-50`}
+              >
+                {isListening ? <MicOff size={32} /> : <Mic size={32} />}
+              </button>
+              <p className="text-xs text-gray-400">
+                {isListening ? '듣는 중... 말씀해주세요' : '버튼을 눌러 시작'}
+              </p>
+            </div>
+
+            {/* 파싱 중 */}
+            {parsing && (
+              <div className="flex items-center justify-center gap-2 py-3 bg-[#F0F5F0] rounded-xl">
+                <Loader2 size={16} className="text-[#2C5F2E] animate-spin" />
+                <p className="text-sm text-[#2C5F2E] font-medium">분석 중...</p>
+              </div>
+            )}
+
+            {/* 파싱 완료 */}
+            {parseComplete && !parsing && (
+              <div className="flex items-center gap-2 py-3 px-4 bg-[#F0F5F0] rounded-xl">
+                <Check size={16} className="text-[#2C5F2E]" />
+                <p className="text-sm text-[#2C5F2E] font-medium">자동 분류 완료! 아래에서 확인하세요</p>
+              </div>
+            )}
+
+            {/* 인식된 텍스트 + 수정 */}
+            {name && !isListening && (
+  <div className="mt-3 space-y-2">
+    <p className="text-xs text-gray-500 font-medium">인식된 텍스트</p>
+    <input
+      type="text"
+      value={name}
+      onChange={(e) => {
+        setName(e.target.value)
+        setParseComplete(false)
+      }}
+      className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2C5F2E] focus:bg-white transition-colors"
+    />
+    <div className="flex items-center justify-between">
+      <button
+        onClick={() => { setName(''); setTranscript(''); setParseComplete(false); setCategory(''); setColor(''); setMaterial('') }}
+        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+      >
+        다시 녹음하기
+      </button>
+      <button
+        onClick={() => parseWithClaude(name)}
+        disabled={parsing || !name.trim()}
+        className="text-xs font-medium text-[#2C5F2E] hover:text-[#234d25] disabled:opacity-40 transition-colors"
+      >
+        다시 분석하기
+      </button>
+    </div>
+  </div>
+)}
+          </div>
+        )}
+
         {/* 카테고리 */}
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-3">
@@ -199,7 +369,7 @@ export default function ClosetPage() {
           </div>
         </div>
 
-        {/* 색상 — 컬러 칩 */}
+        {/* 색상 */}
         <div className="bg-white rounded-2xl p-5 shadow-sm">
           <label className="block text-sm font-medium text-gray-700 mb-3">색상</label>
           <div className="flex flex-wrap gap-3">
@@ -255,7 +425,7 @@ export default function ClosetPage() {
           disabled={isDisabled}
           className="w-full bg-[#2C5F2E] text-white rounded-xl py-4 text-sm font-semibold disabled:opacity-40 transition-all hover:bg-[#234d25] active:scale-[0.98]"
         >
-          {loading ? '등록 중...' : '등록하기'}
+          {loading ? '등록 중...' : parsing ? '분석 중...' : '등록하기'}
         </button>
 
         <button
