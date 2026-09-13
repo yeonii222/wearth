@@ -28,8 +28,12 @@ function LoginForm() {
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
         redirectTo: `${window.location.origin}/auth/reset-password`,
       })
-      if (error) setError('이메일 발송에 실패했어요. 다시 시도해주세요.')
-      else setMessage('비밀번호 재설정 링크를 이메일로 보냈어요!')
+      if (error) {
+        console.error('비밀번호 재설정 에러:', error)
+        setError('이메일 발송에 실패했어요. 다시 시도해주세요.')
+      } else {
+        setMessage('비밀번호 재설정 링크를 이메일로 보냈어요!')
+      }
       setLoading(false)
       return
     }

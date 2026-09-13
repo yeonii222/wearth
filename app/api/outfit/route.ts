@@ -1,52 +1,10 @@
 import { NextResponse } from 'next/server'
-import { generateOutfitRecommendation } from '@/lib/outfit-engine'
+import { generateOutfitRecommendation, getAcceptableLengths, getTempCode, applyTempSensitivity } from '@/lib/outfit-engine'
 import { createClient } from '@/lib/supabase-server'
 import type { Gender, Style, Sensitivity, WeatherCondition } from '@/lib/outfit-engine'
 
-// 아이템 이름 키워드 → 겸용 카테고리 매핑
-const CROSS_CATEGORY_KEYWORDS: Record<string, string[]> = {
-  // 상의 → 아우터 겸용
-  '셔츠': ['top', 'outer'],
-  '가디건': ['top', 'outer'],
-  '후드집업': ['top', 'outer'],
-  '집업': ['top', 'outer'],
-  '블레이저': ['top', 'outer'],
-  '자켓': ['top', 'outer'],
-  '재킷': ['top', 'outer'],
-  '점퍼': ['top', 'outer'],
-  '바람막이': ['top', 'outer'],
-  '후리스': ['top', 'outer'],
-  '플리스': ['top', 'outer'],
-  // 아우터 → 상의 겸용
-  '패딩': ['outer', 'top'],
-  '코트': ['outer'],
-  '무스탕': ['outer'],
-}
-
-// 아이템 이름에서 겸용 카테고리 추출
-function getCrossCategories(item: any): string[] {
-  const name = (item.name || '').toLowerCase()
-  const categoryMap: Record<string, string> = {
-    '상의': 'top',
-    '하의': 'bottom',
-    '아우터': 'outer',
-    '신발': 'footwear',
-    '액세서리': 'accessories',
-  }
-
-  // 기본 카테고리
-  const baseCategory = categoryMap[item.category] || item.category
-  const categories = new Set<string>([baseCategory])
-
-  // 이름 기반 크로스 매칭
-  for (const [keyword, crossCategories] of Object.entries(CROSS_CATEGORY_KEYWORDS)) {
-    if (name.includes(keyword)) {
-      crossCategories.forEach(cat => categories.add(cat))
-    }
-  }
-
-  return Array.from(categories)
-}
+// 상의 세부 종류 중 "아우터 성격"을 가진 것들
+const OUTER_SUB_CATEGORIES = ['자켓', '코트', '패딩/점퍼', '조끼', '가디건']
 
 export async function POST(request: Request) {
   const { weather, gender, style, sensitivity } = await request.json()
@@ -55,7 +13,6 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: '필수 정보가 없습니다.' }, { status: 400 })
   }
 
-  // 코디 추천 생성
   const recommendation = generateOutfitRecommendation(
     weather as WeatherCondition,
     gender as Gender,
@@ -63,14 +20,17 @@ export async function POST(request: Request) {
     sensitivity as Sensitivity
   )
 
-  // 사용자 옷장 가져오기
+  const adjustedTemp = applyTempSensitivity(weather.feels_like, sensitivity as Sensitivity)
+  const tempCode = getTempCode(adjustedTemp)
+  const acceptableTopLengths = getAcceptableLengths(tempCode, 'top')
+  const acceptableBottomLengths = getAcceptableLengths(tempCode, 'bottom')
+
   const supabase = await createClient()
   const { data: { user } } = await supabase.auth.getUser()
 
   const matchedClothes: Record<string, any[]> = {
     top: [],
     bottom: [],
-    outer: [],
     footwear: [],
     accessories: [],
   }
@@ -83,17 +43,20 @@ export async function POST(request: Request) {
 
     if (clothes) {
       clothes.forEach((item) => {
-        // 크로스 카테고리 포함해서 매칭
-        const categories = getCrossCategories(item)
-        categories.forEach((cat) => {
-          if (matchedClothes[cat]) {
-            // 중복 방지
-            const alreadyAdded = matchedClothes[cat].some(i => i.id === item.id)
-            if (!alreadyAdded) {
-              matchedClothes[cat].push(item)
-            }
-          }
-        })
+        const categoryMap: Record<string, string> = {
+          '상의': 'top',
+          '하의': 'bottom',
+          '신발': 'footwear',
+          '액세서리': 'accessories',
+        }
+        const key = categoryMap[item.category]
+        if (!key || !matchedClothes[key]) return
+
+        // 상의/하의는 온도 적합 기장만 통과 (B안: 온도 필터링)
+        if (key === 'top' && item.length && !acceptableTopLengths.includes(item.length)) return
+        if (key === 'bottom' && item.length && !acceptableBottomLengths.includes(item.length)) return
+
+        matchedClothes[key].push(item)
       })
     }
   }
@@ -101,5 +64,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     ...recommendation,
     matchedClothes,
+    outerSubCategories: OUTER_SUB_CATEGORIES,
   })
 }

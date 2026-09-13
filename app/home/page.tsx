@@ -16,6 +16,8 @@ interface WeatherData {
   humidity: number
   wind_speed: number
   city: string
+  rain: number
+  snow: number
 }
 
 interface ClothingItem {
@@ -196,8 +198,17 @@ export default function HomePage() {
                   </div>
                 </div>
               </div>
+
+              {(weather.rain > 0 || weather.snow > 0) && (
+                <div className="mt-3 bg-blue-50 rounded-xl px-3 py-2.5">
+                  <p className="text-sm text-blue-700">
+                    {weather.snow > 0 ? '눈이 내리고 있어요' : '비가 내리고 있어요'}
+                    {weather.rain > 0 && ` · 강수량 ${weather.rain}mm/h`}
+                  </p>
+                </div>
+              )}
             </div>
-          ) : (
+          ) : (    
             <p className="text-gray-300 text-sm text-center py-8">날씨 정보를 가져올 수 없어요</p>
           )}
         </div>

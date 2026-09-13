@@ -19,6 +19,10 @@ export async function GET(request: Request) {
     return NextResponse.json({ error: '날씨 데이터를 가져올 수 없습니다.' }, { status: 500 })
   }
 
+    // 강수량 (mm/h 기준, 지난 1시간). 비/눈이 없으면 필드 자체가 없어서 0으로 처리
+  const rain = data.rain?.['1h'] ?? 0
+  const snow = data.snow?.['1h'] ?? 0
+
   return NextResponse.json({
     temp: Math.round(data.main.temp),
     feels_like: Math.round(data.main.feels_like),
@@ -29,5 +33,7 @@ export async function GET(request: Request) {
     humidity: data.main.humidity,
     wind_speed: data.wind.speed,
     city: data.name,
+    rain,
+    snow,
   })
 }

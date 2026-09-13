@@ -6,18 +6,17 @@ import { useEffect, useState } from 'react'
 import BottomNav from '@/components/BottomNav'
 
 const STYLES = [
-  { value: 'casual', label: '일상', emoji: '👕' },
-  { value: 'formal', label: '출근', emoji: '👔' },
-  { value: 'date', label: '데이트', emoji: '✨' },
-  { value: 'sporty', label: '운동', emoji: '🏃' },
+  { value: 'casual', label: '일상' },
+  { value: 'formal', label: '출근' },
+  { value: 'date', label: '데이트' },
+  { value: 'sporty', label: '운동' },
 ]
 
-const CATEGORY_LABELS: Record<string, { label: string; emoji: string }> = {
-  top: { label: '상의', emoji: '👕' },
-  bottom: { label: '하의', emoji: '👖' },
-  outer: { label: '아우터', emoji: '🧥' },
-  footwear: { label: '신발', emoji: '👟' },
-  accessories: { label: '액세서리', emoji: '🧣' },
+const CATEGORY_LABELS: Record<string, string> = {
+  top: '상의',
+  bottom: '하의',
+  footwear: '신발',
+  accessories: '액세서리',
 }
 
 interface ClothesItem {
@@ -26,15 +25,14 @@ interface ClothesItem {
   image_url: string | null
   category: string
   color: string | null
-  material: string | null
-  input_type: string
+  length: string | null
+  sub_category: string | null
 }
 
 interface OutfitResult {
   tempCode: string
   top: string[]
   bottom: string[]
-  outer: string[]
   footwear: string[]
   accessories: string[]
   weatherWarning?: string
@@ -48,6 +46,15 @@ export default function OutfitPage() {
   const [weather, setWeather] = useState<any>(null)
   const [profile, setProfile] = useState<any>(null)
   const [locationLabel, setLocationLabel] = useState('')
+
+  // 각 카테고리에서 현재 선택된 아이템 id (스와핑 상태)
+  const [selectedItems, setSelectedItems] = useState<Record<string, string | null>>({
+    top: null,
+    bottom: null,
+    footwear: null,
+    accessories: null,
+  })
+
   const router = useRouter()
   const supabase = createClient()
 
@@ -70,7 +77,6 @@ export default function OutfitPage() {
         setLocationLabel(profileData.location_address)
       }
 
-      // 저장된 주소 좌표 우선, 없으면 GPS
       if (profileData?.location_lat && profileData?.location_lon) {
         const res = await fetch(`/api/weather?lat=${profileData.location_lat}&lon=${profileData.location_lon}`)
         const weatherData = await res.json()
@@ -107,8 +113,17 @@ export default function OutfitPage() {
       }),
     })
 
-    const data = await res.json()
+    const data: OutfitResult = await res.json()
     setOutfit(data)
+
+    // 각 카테고리의 첫 번째 아이템을 기본 선택값으로 설정
+    const initialSelection: Record<string, string | null> = {}
+    Object.keys(CATEGORY_LABELS).forEach((key) => {
+      const items = data.matchedClothes?.[key] || []
+      initialSelection[key] = items.length > 0 ? items[0].id : null
+    })
+    setSelectedItems(initialSelection)
+
     setLoading(false)
   }
 
@@ -117,49 +132,74 @@ export default function OutfitPage() {
   }, [weather, profile, selectedStyle])
 
   const CategorySection = ({ categoryKey }: { categoryKey: string }) => {
-    const { label, emoji } = CATEGORY_LABELS[categoryKey]
+    const label = CATEGORY_LABELS[categoryKey]
     const recommendedItems = outfit?.[categoryKey as keyof OutfitResult] as string[] || []
     const matchedItems = outfit?.matchedClothes?.[categoryKey] || []
     const hasMatch = matchedItems.length > 0
+    const selectedId = selectedItems[categoryKey]
+    const selectedItem = matchedItems.find((i) => i.id === selectedId)
 
     return (
       <div className="bg-white rounded-2xl p-4 shadow-sm">
-        <p className="text-sm font-medium text-gray-700 mb-3">{emoji} {label}</p>
+        <p className="text-sm font-medium text-gray-700 mb-3">{label}</p>
 
         {hasMatch ? (
-          // 옷장에 아이템이 있을 때
-          <div className="flex gap-3 overflow-x-auto pb-2">
-            {matchedItems.map((item) => (
-              <div key={item.id} className="flex-shrink-0 w-24">
-                {item.image_url ? (
-                  // 사진 등록 아이템
-                  <img
-                    src={item.image_url}
-                    alt={item.name || item.category}
-                    className="w-24 h-24 object-cover rounded-xl border border-gray-100"
-                  />
-                ) : (
-                  // 텍스트 등록 아이템
-                  <div className="w-24 h-24 rounded-xl border border-gray-100 bg-[#F5F0E8] flex flex-col items-center justify-center p-2">
-                    <span className="text-2xl mb-1">{emoji}</span>
-                    <p className="text-xs text-gray-600 text-center leading-tight truncate w-full text-center">
-                      {item.name || item.category}
-                    </p>
-                  </div>
-                )}
-                {item.color && (
-                  <p className="text-xs text-gray-400 text-center mt-1">{item.color}</p>
-                )}
+          <>
+            {/* 현재 선택된 아이템 - 크게 표시 */}
+            {selectedItem && (
+              <div className="mb-3 flex items-center gap-3 bg-[#F5F0E8] rounded-xl p-3">
+                <div className="w-14 h-14 rounded-lg overflow-hidden flex-shrink-0 bg-white flex items-center justify-center">
+                  {selectedItem.image_url ? (
+                    <img src={selectedItem.image_url} alt={selectedItem.name || ''} className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-sm font-semibold text-[#2C5F2E]">
+                      {selectedItem.category?.[0] ?? '?'}
+                    </span>
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-gray-800">{selectedItem.name || selectedItem.category}</p>
+                  <p className="text-xs text-gray-400">{selectedItem.color}{selectedItem.sub_category ? ` · ${selectedItem.sub_category}` : ''}</p>
+                </div>
               </div>
-            ))}
-          </div>
+            )}
+
+            {/* 스와핑 가능한 옵션들 - 가로 스크롤 */}
+            {matchedItems.length > 1 && (
+              <div className="flex gap-2 overflow-x-auto pb-1">
+                {matchedItems.map((item) => {
+                  const isSelected = item.id === selectedId
+                  return (
+                    <button
+                      key={item.id}
+                      onClick={() => setSelectedItems((prev) => ({ ...prev, [categoryKey]: item.id }))}
+                      className="flex-shrink-0 w-16"
+                    >
+                      <div
+                        className={`w-16 h-16 rounded-xl overflow-hidden border-2 flex items-center justify-center transition-colors ${
+                          isSelected ? 'border-[#2C5F2E]' : 'border-gray-100'
+                        } bg-[#F5F0E8]`}
+                      >
+                        {item.image_url ? (
+                          <img src={item.image_url} alt={item.name || ''} className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-sm font-semibold text-[#2C5F2E]">
+                            {item.category?.[0] ?? '?'}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-[10px] text-gray-400 text-center mt-1 truncate">
+                        {item.name || item.category}
+                      </p>
+                    </button>
+                  )
+                })}
+              </div>
+            )}
+          </>
         ) : (
-          // 옷장에 아이템이 없을 때 — 추천 텍스트
           <div className="bg-gray-50 rounded-xl p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <span className="text-3xl opacity-30">{emoji}</span>
-              <p className="text-xs text-gray-400">옷장에 없어요</p>
-            </div>
+            <p className="text-xs text-gray-400 mb-2">옷장에 없어요</p>
             {recommendedItems.length > 0 && (
               <div className="flex flex-wrap gap-1">
                 {recommendedItems.slice(0, 3).map((item, i) => (
@@ -181,7 +221,6 @@ export default function OutfitPage() {
 
         <h1 className="text-xl font-bold text-gray-800 mb-6">오늘의 코디</h1>
 
-        {/* 날씨 요약 */}
         {weather && (
           <div className="bg-white rounded-2xl p-4 shadow-sm mb-4 flex justify-between items-center">
             <div>
@@ -197,32 +236,28 @@ export default function OutfitPage() {
           </div>
         )}
 
-        {/* 날씨 경고 */}
         {outfit?.weatherWarning && (
           <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 mb-4 text-sm text-amber-700">
             {outfit.weatherWarning}
           </div>
         )}
 
-        {/* 외출 목적 선택 */}
         <div className="flex gap-2 mb-6">
           {STYLES.map((s) => (
             <button
               key={s.value}
               onClick={() => setSelectedStyle(s.value)}
-              className={`flex-1 py-3 rounded-xl text-xs font-medium transition-colors flex flex-col items-center gap-1 ${
+              className={`flex-1 py-3 rounded-xl text-xs font-medium transition-colors ${
                 selectedStyle === s.value
                   ? 'bg-[#2C5F2E] text-white'
                   : 'bg-white text-gray-600'
               }`}
             >
-              <span className="text-lg">{s.emoji}</span>
               {s.label}
             </button>
           ))}
         </div>
 
-        {/* 코디 추천 결과 */}
         {loading ? (
           <div className="text-center py-12 text-gray-400">코디 추천 중...</div>
         ) : outfit ? (

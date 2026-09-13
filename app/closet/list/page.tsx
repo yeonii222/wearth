@@ -11,13 +11,13 @@ interface ClothingItem {
   name: string | null
   category: string
   color: string | null
-  material: string | null
+  length: string | null
   image_url: string | null
   input_type: string
   created_at: string
 }
 
-const FILTERS = ['전체', '상의', '하의', '아우터', '신발', '액세서리']
+const FILTERS = ['전체', '상의', '하의', '신발', '액세서리']
 
 export default function ClosetListPage() {
   const [items, setItems] = useState<ClothingItem[]>([])
@@ -46,7 +46,8 @@ export default function ClosetListPage() {
 
   const filtered = filter === '전체' ? items : items.filter(i => i.category === filter)
 
-  const handleDelete = async (id: string) => {
+  const handleDelete = async (e: React.MouseEvent, id: string) => {
+    e.stopPropagation()
     if (!confirm('이 아이템을 삭제할까요?')) return
     await supabase.from('clothes').delete().eq('id', id)
     setItems(prev => prev.filter(i => i.id !== id))
@@ -111,7 +112,11 @@ export default function ClosetListPage() {
         {/* 아이템 목록 */}
         <div className="space-y-3">
           {filtered.map((item) => (
-            <div key={item.id} className="bg-white rounded-2xl p-4 shadow-sm flex gap-4 items-center">
+            <button
+              key={item.id}
+              onClick={() => router.push(`/closet/${item.id}/edit`)}
+              className="w-full bg-white rounded-2xl p-4 shadow-sm flex gap-4 items-center text-left"
+            >
 
               {/* 이미지 또는 카테고리 텍스트 */}
               <div className="w-16 h-16 rounded-xl overflow-hidden flex-shrink-0 bg-gray-50 flex items-center justify-center">
@@ -131,27 +136,27 @@ export default function ClosetListPage() {
                   <span className="text-xs bg-[#F0F5F0] text-[#2C5F2E] px-2 py-0.5 rounded-full font-medium">
                     {item.category}
                   </span>
+                  {item.length && (
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                      {item.length}
+                    </span>
+                  )}
                   {item.color && (
                     <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
                       {item.color}
-                    </span>
-                  )}
-                  {item.material && (
-                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
-                      {item.material}
                     </span>
                   )}
                 </div>
               </div>
 
               {/* 삭제 버튼 */}
-              <button
-                onClick={() => handleDelete(item.id)}
+              <span
+                onClick={(e) => handleDelete(e, item.id)}
                 className="text-gray-300 hover:text-red-400 transition-colors flex-shrink-0 p-1"
               >
                 <X size={16} />
-              </button>
-            </div>
+              </span>
+            </button>
           ))}
         </div>
 

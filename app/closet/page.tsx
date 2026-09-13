@@ -3,10 +3,12 @@
 import { createClient } from '@/lib/supabase-browser'
 import { useRouter } from 'next/navigation'
 import { useState, useRef, useEffect } from 'react'
-import { Camera, Type, Mic, MicOff, Check, Loader2 } from 'lucide-react'
+import { Camera, Mic, MicOff, Check, Loader2 } from 'lucide-react'
 import BottomNav from '@/components/BottomNav'
 
-const CATEGORIES = ['상의', '하의', '아우터', '신발', '액세서리']
+const CATEGORIES = ['상의', '하의', '신발', '액세서리']
+const TOP_LENGTHS = ['긴팔', '반팔', '민소매']
+const BOTTOM_LENGTHS = ['롱', '숏', '스커트']
 
 const COLORS: { label: string; hex: string }[] = [
   { label: '화이트', hex: '#FFFFFF' },
@@ -23,22 +25,21 @@ const COLORS: { label: string; hex: string }[] = [
   { label: '퍼플', hex: '#8B5CF6' },
 ]
 
-const MATERIALS = ['면', '울', '니트', '린넨', '폴리에스터', '데님', '가죽', '시폰', '벨벳', '기타']
-
-type InputMode = 'text' | 'photo' | 'voice'
+type InputMode = 'photo' | 'voice'
 
 export default function ClosetPage() {
-  const [mode, setMode] = useState<InputMode>('text')
+  const [mode, setMode] = useState<InputMode>('voice')
   const [category, setCategory] = useState('')
   const [color, setColor] = useState('')
-  const [material, setMaterial] = useState('')
+  const [length, setLength] = useState('')
+  const [colorMode, setColorMode] = useState<'palette' | 'custom'>('palette')
+  const [customColorText, setCustomColorText] = useState('')
   const [name, setName] = useState('')
   const [image, setImage] = useState<File | null>(null)
   const [preview, setPreview] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
 
-  // 음성 관련 상태
   const [isListening, setIsListening] = useState(false)
   const [transcript, setTranscript] = useState('')
   const [voiceSupported, setVoiceSupported] = useState(true)
@@ -52,11 +53,14 @@ export default function ClosetPage() {
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition
-      if (!SpeechRecognition) setVoiceSupported(false)
+      if (!SpeechRecognition) {
+        setVoiceSupported(false)
+        // 음성 미지원 브라우저는 자동으로 사진 모드로 전환
+        setMode('photo')
+      }
     }
   }, [])
 
-  // 음성 인식 완료 후 Claude 파싱 호출
   const parseWithClaude = async (text: string) => {
     if (!text.trim()) return
     setParsing(true)
@@ -68,9 +72,21 @@ export default function ClosetPage() {
         body: JSON.stringify({ text }),
       })
       const data = await res.json()
+      console.log('파싱 API 응답:', data)
       if (data.category) setCategory(data.category)
-      if (data.color) setColor(data.color)
-      if (data.material) setMaterial(data.material)
+      if (data.color) {
+        const isKnownColor = COLORS.some((c) => c.label === data.color)
+        if (isKnownColor) {
+          setColorMode('palette')
+          setColor(data.color)
+        } else {
+          // 팔레트에 없는 색이면 "기타"로 자동 전환
+          setColorMode('custom')
+          setCustomColorText(data.color)
+          setColor(data.color)
+        }
+      }
+      if (data.length) setLength(data.length)
       setParseComplete(true)
     } catch (e) {
       console.error('파싱 실패:', e)
@@ -130,7 +146,7 @@ export default function ClosetPage() {
     setName('')
     setCategory('')
     setColor('')
-    setMaterial('')
+    setLength('')
     setImage(null)
     setPreview(null)
     setTranscript('')
@@ -139,7 +155,6 @@ export default function ClosetPage() {
 
   const handleSubmit = async () => {
     if (!category) return
-    if (mode === 'text' && !name) return
     if (mode === 'photo' && !image) return
     if (mode === 'voice' && !name) return
 
@@ -163,7 +178,7 @@ export default function ClosetPage() {
       name: name || null,
       category,
       color: color || null,
-      material: material || null,
+      length: length || null,
       image_url: imageUrl,
       input_type: mode,
     })
@@ -178,7 +193,6 @@ export default function ClosetPage() {
 
   const isDisabled = loading || parsing
     || !category
-    || (mode === 'text' && !name)
     || (mode === 'photo' && !image)
     || (mode === 'voice' && !name)
 
@@ -206,13 +220,14 @@ export default function ClosetPage() {
         {/* 입력 방식 탭 */}
         <div className="flex gap-1.5 bg-white rounded-xl p-1 shadow-sm">
           <button
-            onClick={() => setMode('text')}
+            onClick={() => setMode('voice')}
+            disabled={!voiceSupported}
             className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
-              mode === 'text' ? 'bg-[#2C5F2E] text-white' : 'text-gray-400 hover:text-gray-600'
-            }`}
+              mode === 'voice' ? 'bg-[#2C5F2E] text-white' : 'text-gray-400 hover:text-gray-600'
+            } disabled:opacity-40`}
           >
-            <Type size={13} />
-            텍스트
+            <Mic size={13} />
+            음성으로 등록
           </button>
           <button
             onClick={() => setMode('photo')}
@@ -221,33 +236,9 @@ export default function ClosetPage() {
             }`}
           >
             <Camera size={13} />
-            사진
-          </button>
-          <button
-            onClick={() => setMode('voice')}
-            disabled={!voiceSupported}
-            className={`flex-1 flex items-center justify-center gap-1.5 py-2.5 rounded-lg text-xs font-medium transition-colors ${
-              mode === 'voice' ? 'bg-[#2C5F2E] text-white' : 'text-gray-400 hover:text-gray-600'
-            } disabled:opacity-40`}
-          >
-            <Mic size={13} />
-            음성
+            사진으로 등록
           </button>
         </div>
-
-        {/* 텍스트 입력 */}
-        {mode === 'text' && (
-          <div className="bg-white rounded-2xl p-5 shadow-sm">
-            <label className="block text-sm font-medium text-gray-700 mb-2">옷 이름 또는 설명</label>
-            <input
-              type="text"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              placeholder="예: 연핑크 알파카 니트"
-              className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2C5F2E] focus:bg-white transition-colors"
-            />
-          </div>
-        )}
 
         {/* 사진 업로드 */}
         {mode === 'photo' && (
@@ -280,7 +271,6 @@ export default function ClosetPage() {
               마이크 버튼을 누르고 옷을 설명해주세요
             </p>
 
-            {/* 마이크 버튼 */}
             <div className="flex flex-col items-center gap-3 py-4">
               <button
                 onClick={toggleListening}
@@ -298,7 +288,6 @@ export default function ClosetPage() {
               </p>
             </div>
 
-            {/* 파싱 중 */}
             {parsing && (
               <div className="flex items-center justify-center gap-2 py-3 bg-[#F0F5F0] rounded-xl">
                 <Loader2 size={16} className="text-[#2C5F2E] animate-spin" />
@@ -306,7 +295,6 @@ export default function ClosetPage() {
               </div>
             )}
 
-            {/* 파싱 완료 */}
             {parseComplete && !parsing && (
               <div className="flex items-center gap-2 py-3 px-4 bg-[#F0F5F0] rounded-xl">
                 <Check size={16} className="text-[#2C5F2E]" />
@@ -314,36 +302,41 @@ export default function ClosetPage() {
               </div>
             )}
 
-            {/* 인식된 텍스트 + 수정 */}
+            {parseComplete && !parsing && (!category || !color || !length) && (
+              <p className="text-xs text-gray-400 mt-2 px-1">
+                일부 항목은 인식하지 못했어요. 아래에서 직접 선택해주세요.
+              </p>
+            )}
+
             {name && !isListening && (
-  <div className="mt-3 space-y-2">
-    <p className="text-xs text-gray-500 font-medium">인식된 텍스트</p>
-    <input
-      type="text"
-      value={name}
-      onChange={(e) => {
-        setName(e.target.value)
-        setParseComplete(false)
-      }}
-      className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2C5F2E] focus:bg-white transition-colors"
-    />
-    <div className="flex items-center justify-between">
-      <button
-        onClick={() => { setName(''); setTranscript(''); setParseComplete(false); setCategory(''); setColor(''); setMaterial('') }}
-        className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
-      >
-        다시 녹음하기
-      </button>
-      <button
-        onClick={() => parseWithClaude(name)}
-        disabled={parsing || !name.trim()}
-        className="text-xs font-medium text-[#2C5F2E] hover:text-[#234d25] disabled:opacity-40 transition-colors"
-      >
-        다시 분석하기
-      </button>
-    </div>
-  </div>
-)}
+              <div className="mt-3 space-y-2">
+                <p className="text-xs text-gray-500 font-medium">인식된 텍스트</p>
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => {
+                    setName(e.target.value)
+                    setParseComplete(false)
+                  }}
+                  className="w-full border border-gray-100 bg-gray-50 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#2C5F2E] focus:bg-white transition-colors"
+                />
+                <div className="flex items-center justify-between">
+                  <button
+                    onClick={() => { setName(''); setTranscript(''); setParseComplete(false); setCategory(''); setColor(''); setLength('') }}
+                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors"
+                  >
+                    다시 녹음하기
+                  </button>
+                  <button
+                    onClick={() => parseWithClaude(name)}
+                    disabled={parsing || !name.trim()}
+                    className="text-xs font-medium text-[#2C5F2E] hover:text-[#234d25] disabled:opacity-40 transition-colors"
+                  >
+                    다시 분석하기
+                  </button>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
@@ -374,11 +367,15 @@ export default function ClosetPage() {
           <label className="block text-sm font-medium text-gray-700 mb-3">색상</label>
           <div className="flex flex-wrap gap-3">
             {COLORS.map((col) => {
-              const isSelected = color === col.label
+              const isSelected = colorMode === 'palette' && color === col.label
               return (
                 <button
                   key={col.label}
-                  onClick={() => setColor(col.label)}
+                  onClick={() => {
+                    setColorMode('palette')
+                    setColor(col.label)
+                    setCustomColorText('')
+                  }}
                   title={col.label}
                   className="flex flex-col items-center gap-1.5"
                 >
@@ -396,28 +393,67 @@ export default function ClosetPage() {
                 </button>
               )
             })}
-          </div>
-        </div>
 
-        {/* 소재 */}
-        <div className="bg-white rounded-2xl p-5 shadow-sm">
-          <label className="block text-sm font-medium text-gray-700 mb-3">소재</label>
-          <div className="flex flex-wrap gap-2">
-            {MATERIALS.map((mat) => (
-              <button
-                key={mat}
-                onClick={() => setMaterial(mat)}
-                className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
-                  material === mat
-                    ? 'bg-[#2C5F2E] text-white border-[#2C5F2E]'
-                    : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+            {/* 기타 (직접 입력) */}
+            <button
+              onClick={() => {
+                setColorMode('custom')
+                setColor(customColorText)
+              }}
+              title="기타"
+              className="flex flex-col items-center gap-1.5"
+            >
+              <div
+                className={`w-8 h-8 rounded-full border-2 flex items-center justify-center text-xs text-gray-400 transition-all ${
+                  colorMode === 'custom'
+                    ? 'border-[#2C5F2E] scale-110 shadow-sm'
+                    : 'border-gray-200 hover:border-gray-400'
                 }`}
               >
-                {mat}
-              </button>
-            ))}
+                +
+              </div>
+              <span className={`text-xs ${colorMode === 'custom' ? 'text-[#2C5F2E] font-medium' : 'text-gray-400'}`}>
+                기타
+              </span>
+            </button>
           </div>
+
+          {/* 직접 입력 필드 */}
+          {colorMode === 'custom' && (
+            <input
+              type="text"
+              value={customColorText}
+              onChange={(e) => {
+                setCustomColorText(e.target.value)
+                setColor(e.target.value)
+              }}
+              placeholder="예: 민트색, 와인색"
+              className="w-full mt-3 border border-gray-100 bg-gray-50 rounded-xl px-4 py-2.5 text-sm focus:outline-none focus:border-[#2C5F2E] focus:bg-white transition-colors"
+            />
+          )}
         </div>
+
+        {/* 기장 (상의/하의 선택 시에만 노출) */}
+        {(category === '상의' || category === '하의') && (
+          <div className="bg-white rounded-2xl p-5 shadow-sm">
+            <label className="block text-sm font-medium text-gray-700 mb-3">기장</label>
+            <div className="flex flex-wrap gap-2">
+              {(category === '상의' ? TOP_LENGTHS : BOTTOM_LENGTHS).map((len) => (
+                <button
+                  key={len}
+                  onClick={() => setLength(len)}
+                  className={`px-4 py-2 rounded-full text-sm font-medium border transition-colors ${
+                    length === len
+                      ? 'bg-[#2C5F2E] text-white border-[#2C5F2E]'
+                      : 'bg-white text-gray-500 border-gray-200 hover:border-gray-400'
+                  }`}
+                >
+                  {len}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* 등록 버튼 */}
         <button

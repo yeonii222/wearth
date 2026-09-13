@@ -288,3 +288,20 @@ export function generateOutfitRecommendation(
     weatherWarning,
   }
 }
+// 기온 구간별로 상의/하의에 적합한 기장(length) 필터
+export function getAcceptableLengths(tempCode: TempCode, part: 'top' | 'bottom'): string[] {
+  if (part === 'top') {
+    if (tempCode === 'T1') return ['반팔', '민소매']
+    if (tempCode === 'T2') return ['반팔', '긴팔']
+    return ['긴팔', '반팔']
+  } else {
+    if (tempCode === 'T1' || tempCode === 'T2') return ['숏', '스커트']
+    if (tempCode === 'T3') return ['숏', '스커트', '롱']
+    return ['롱', '스커트']
+  }
+}
+
+// 이 기온 구간에서 아우터(자켓/코트/패딩 등)를 보여줄지 여부
+export function shouldIncludeOuter(tempCode: TempCode): boolean {
+  return tempCode !== 'T1' && tempCode !== 'T2'
+}
